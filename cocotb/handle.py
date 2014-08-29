@@ -28,7 +28,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. '''
 
 # -*- coding: utf-8 -*-
-
+import warnings
 import logging
 import ctypes
 import traceback
@@ -46,8 +46,9 @@ else:
 import cocotb
 from cocotb.binary import BinaryValue
 from cocotb.log import SimLog
-from cocotb.result import TestError
+from cocotb.result import TestError, raise_error
 from cocotb.triggers import _RisingEdge
+
 
 class SimHandle(object):
 
@@ -58,43 +59,54 @@ class SimHandle(object):
         """
         self._handle = handle           # handle used for future simulator transactions
         self._sub_handles = {}          # Dictionary of SimHandle objects created by getattr
+
+        self._name = simulator.get_name_string(self._handle)
+        self._edge = _RisingEdge(self)
         self._len = None
 
-        self.name = simulator.get_name_string(self._handle)
-        self.fullname = self.name + '(%s)' % simulator.get_type_string(self._handle)
-        self.log = SimLog('cocotb.' + self.name)
-        self.log.debug("Created!")
-        self._edge = _RisingEdge(self)
+        self._log = SimLog('cocotb.' + self._name)
+        self._log.debug("Created! (%s)" % simulator.get_type_string(self._handle))
 
     def __str__(self):
-        return "%s @0x%x" % (self.name, self._handle)
+        return "%s @0x%x" % (self._name, self._handle)
 
     def __getattr__(self, name):
         """ Query the simulator for a object with the specified name
             and cache the result to build a tree
         """
+
+        # Slight hack - defer creation of _value until it's used
+        # Otherwise we try to create a BinaryValue for hierarchy objects that
+        # don't have a length etc, causing spurious warnings
+        if name == "_value":
+            self._value = BinaryValue(bits=len(self))
+            return self._value
+
         if name in self._sub_handles:
             return self._sub_handles[name]
         new_handle = simulator.get_handle_by_name(self._handle, name)
+
         if not new_handle:
-            self._raise_testerror("%s contains no object named %s" % (self.name, name))
+            # We have deprecated obj.log since it could collide with RTL
+            # signal names / hierarchy. Support old behaviour where collision
+            # didn't occur
+            if name == "log":
+                warnings.warn("use of SimHandle.log is deprecated", 
+                                                            DeprecationWarning)
+                return self._log
+            if name == "name":
+                warnings.warn("use of SimHandle.name is deprecated", 
+                                                            DeprecationWarning)
+                return self._name
+            raise_error(self, "%s contains no object named %s" % (
+                                                            self._name, name))
         self._sub_handles[name] = SimHandle(new_handle)
         return self._sub_handles[name]
 
-    def _raise_testerror(self, msg):
-        buff = StringIO()
-        lastframe = sys._getframe(2)
-        traceback.print_stack(lastframe, file=buff)
-        self.log.error("%s\n%s" % (msg, buff.getvalue()))
-        exception = TestError(msg)
-        exception.stderr.write(buff.getvalue())
-        buff.close()
-        raise exception
 
     def __setattr__(self, name, value):
         """Provide transparent access to signals"""
-        if not name.startswith('_') and not name in ["name", "fullname", "log", "value"] \
-                                                     and self.__hasattr__(name):
+        if not name.startswith('_') and self.__hasattr__(name):
             getattr(self, name).setcachedvalue(value)
             return
         object.__setattr__(self, name, value)
@@ -110,7 +122,7 @@ class SimHandle(object):
             return self._sub_handles[index]
         new_handle = simulator.get_handle_by_index(self._handle, index)
         if not new_handle:
-            self._raise_testerror("%s contains no object at index %d" % (self.name, index))
+            self._raise_testerror("%s contains no object at index %d" % (self._name, index))
         self._sub_handles[index] = SimHandle(new_handle)
         return self._sub_handles[index]
 
@@ -119,9 +131,8 @@ class SimHandle(object):
         self.__getitem__(index).setcachedvalue(value)
 
     def getvalue(self):
-        result = BinaryValue()
-        result.binstr = self._get_value_str()
-        return result
+        self._value.binstr = self._get_value_str()
+        return self._value
 
     def setimmediatevalue(self, value):
         """
@@ -146,9 +157,11 @@ class SimHandle(object):
             return
 
         if isinstance(value, ctypes.Structure):
-            value = BinaryValue(value=cocotb.utils.pack(value), bits=len(self))
+            self._value.buff = cocotb.utils.pack(value)
+            value = self._value
         elif isinstance(value, (int, long)):
-            value = BinaryValue(value=value, bits=len(self), bigEndian=False)
+            self._value.integer = value
+            value = self._value
         elif not isinstance(value, BinaryValue):
             self.log.critical("Unsupported type for value assignment: %s (%s)" % (type(value), repr(value)))
             raise TypeError("Unable to set simulator value with type %s" % (type(value)))
@@ -214,8 +227,9 @@ class SimHandle(object):
                 except StopIteration:
                     break
                 hdl = SimHandle(thing)
-                self._sub_handles[hdl.name] = hdl
+                self._sub_handles[hdl._name] = hdl
                 yield hdl
+
     def __del__(self):
         """Free handle from gpi that was allocated on construction"""
         if self._handle is not None:
@@ -224,4 +238,9 @@ class SimHandle(object):
     def __int__(self):
         return int(self.value)
 
+    def __nonzero__(self):
+        """
+        Assume non-zero if there are any 1's in the binary value
+        """
+        return '1' in self._get_value_str()
 
