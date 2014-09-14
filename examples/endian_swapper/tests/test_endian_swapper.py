@@ -29,6 +29,7 @@ import random
 import logging
 
 import cocotb
+import cocotb.coverage
 
 from cocotb.clock import Clock
 from cocotb.triggers import Timer, RisingEdge, ReadOnly
@@ -104,6 +105,11 @@ class EndianSwapperTB(object):
         self.dut.log.debug("Out of reset")
 
 
+    @cocotb.coroutine
+    @cocotb.coverage.bins("stream_in.pkt_length", fn=lambda pkt: len(pkt), bins=[1,8,32,128,256,500])
+    def send(self, pkt):
+        yield self.stream_in.send(pkt)
+
 @cocotb.coroutine
 def clock_gen(signal):
     while True:
@@ -131,7 +137,7 @@ def run_test(dut, data_in=None, config_coroutine=None, idle_inserter=None, backp
 
     # Send in the packets
     for transaction in data_in():
-        yield tb.stream_in.send(transaction)
+        yield tb.send(transaction)
 
     # Wait at least 2 cycles where output ready is low before ending the test
     for i in xrange(2):
@@ -146,6 +152,8 @@ def run_test(dut, data_in=None, config_coroutine=None, idle_inserter=None, backp
                           pkt_count.integer, tb.pkts_sent))
     else:
         dut.log.info("DUT correctly counted %d packets" % pkt_count.integer)
+
+    dut.log.info(cocotb.coverage.dump())
 
     raise tb.scoreboard.result
 
