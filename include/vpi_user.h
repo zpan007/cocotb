@@ -44,6 +44,7 @@ typedef uint32_t *vpiHandle;
 
 #define vpiNet                 36   /* scalar or vector net */
 #define vpiModule              32   /* module instance */
+#define vpiInterface           601
 #define vpiStructVar           618
 
 #define vpiStop                66  /* execute simulator's $stop */
@@ -56,6 +57,11 @@ typedef uint32_t *vpiHandle;
 
 #define vpiNoDelay              1
 #define vpiInertialDelay        2
+
+#define vpiInterfacePort        1
+#define vpiModport              606
+#define vpiPortInst             98   /* connected port instance */
+#define vpiVariables            100   /* variables in module */
 
 typedef struct t_vpi_time
 {

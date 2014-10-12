@@ -236,6 +236,8 @@ static gpi_sim_hdl vpi_get_handle_by_name(const char *name, gpi_sim_hdl parent)
     int len;
     char *buff;
 
+    printf("Got VPI type: %d\n", vpi_get(vpiType, (vpiHandle)(parent->sim_hdl)));
+
     // Structures aren't technically a scope, according to the LRM. If parent
     // is a structure then we have to iterate over the members comparing names
     if (vpiStructVar == vpi_get(vpiType, (vpiHandle)(parent->sim_hdl))) {
@@ -243,6 +245,8 @@ static gpi_sim_hdl vpi_get_handle_by_name(const char *name, gpi_sim_hdl parent)
         iterator = vpi_iterate(vpiMember, (vpiHandle)(parent->sim_hdl));
 
         for (obj = vpi_scan(iterator); obj != NULL; obj = vpi_scan(iterator)) {
+
+            printf("Got: %s\n", vpi_get_str(vpiName, obj));
 
             if (!strcmp(name, strrchr(vpi_get_str(vpiName, obj), 46) + 1))
                 break;
@@ -253,12 +257,67 @@ static gpi_sim_hdl vpi_get_handle_by_name(const char *name, gpi_sim_hdl parent)
 
         // Need to free the iterator if it didn't return NULL
         if (!vpi_free_object(iterator)) {
-            LOG_WARN("VPI: Attempting to free root iterator failed!");
+            LOG_WARN("VPI: Attempting to free scope iterator failed!");
             check_vpi_error();
         }
 
         goto success;
     }
+
+    // Likewise interfaces aren't a scope?!
+    if (vpiInterface == vpi_get(vpiType, (vpiHandle)(parent->sim_hdl))) {
+
+        printf("Found an interface, iterating ports\n");
+        iterator = vpi_iterate(vpiModport, (vpiHandle)(parent->sim_hdl));
+
+        for (obj = vpi_scan(iterator); obj != NULL; obj = vpi_scan(iterator)) {
+
+            printf("Got: %s\n", vpi_get_str(vpiName, obj));
+
+            if (!strcmp(name, vpi_get_str(vpiName, obj)))
+                break;
+        }
+
+        if (!obj)
+            return NULL;
+
+        // Need to free the iterator if it didn't return NULL
+        if (!vpi_free_object(iterator)) {
+            LOG_WARN("VPI: Attempting to free scope iterator failed!");
+            check_vpi_error();
+        }
+        printf("Success, iterator cleaned up\n");
+        goto success;
+    }
+
+    // And of course neither are modports....
+    if (vpiModport == vpi_get(vpiType, (vpiHandle)(parent->sim_hdl))) {
+
+        printf("Found a modport, iterating ports\n");
+        iterator = vpi_iterate(vpiPortInst, (vpiHandle)(parent->sim_hdl));
+
+        for (obj = vpi_scan(iterator); obj != NULL; obj = vpi_scan(iterator)) {
+
+            printf("Got: %s\n", vpi_get_str(vpiName, obj));
+
+            if (!strcmp(name, vpi_get_str(vpiName, obj)))
+                break;
+        }
+
+        if (!obj)
+            return NULL;
+
+        // Need to free the iterator if it didn't return NULL
+        if (!vpi_free_object(iterator)) {
+            LOG_WARN("VPI: Attempting to free scope iterator failed!");
+            check_vpi_error();
+        }
+        printf("Success, iterator cleaned up\n");
+        goto success;
+    }
+
+
+
 
     if (name)
         len = strlen(name) + 1;
