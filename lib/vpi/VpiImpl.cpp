@@ -72,7 +72,7 @@ void VpiImpl::get_sim_time(uint32_t *high, uint32_t *low)
 
 void VpiImpl::sim_printf(const char *msg)
 {
-    vpi_printf(msg);
+    vpi_printf("%s", msg);
 }
 
 GpiObjHdl* VpiImpl::create_gpi_obj_from_handle(vpiHandle new_hdl, std::string &name)
