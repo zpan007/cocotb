@@ -203,6 +203,7 @@ public:
      /* Sim related */
     void sim_end(void);
     void get_sim_time(uint32_t *high, uint32_t *low);
+    void sim_printf(const char *msg);
 
     /* Hierachy related */
     GpiObjHdl *get_root_handle(const char *name);

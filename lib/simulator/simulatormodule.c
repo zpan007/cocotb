@@ -736,6 +736,21 @@ static PyObject *get_sim_time(PyObject *self, PyObject *args)
     return pTuple;
 }
 
+static PyObject *sim_printf(PyObject *self, PyObject *args)
+{
+    char *msg;
+    
+    PyGILState_STATE gstate;
+    gstate = TAKE_GIL();
+
+    msg = PyString_AsString(PyTuple_GetItem(args, 0));
+    gpi_printf(msg);
+    DROP_GIL(gstate);
+
+    return Py_BuildValue("s", "OK!");
+}
+
+
 static PyObject *stop_simulator(PyObject *self, PyObject *args)
 {
     gpi_sim_end();

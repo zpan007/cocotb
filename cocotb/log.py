@@ -49,9 +49,20 @@ _FILENAME_CHARS = 20
 _LINENO_CHARS   = 4
 _FUNCNAME_CHARS = 31
 
+
+
+class SimLogHandler(logging.Handler):
+    """
+    Log handler that sends the log messages to the simulator print function
+    """
+    def emit(self, record):
+        s = self.format(record) + "\n"
+        simulator.sim_printf(s)
+
 class SimBaseLog(logging.getLoggerClass()):
     def __init__(self, name):
-        hdlr = logging.StreamHandler(sys.stdout)
+        #hdlr = logging.StreamHandler(sys.stdout)
+        hdlr = SimLogHandler()
         want_ansi = os.getenv("COCOTB_ANSI_OUTPUT")
         if want_ansi is None:
             want_ansi = sys.stdout.isatty() # default to ANSI for TTYs

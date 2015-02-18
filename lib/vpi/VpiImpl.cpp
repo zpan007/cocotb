@@ -70,6 +70,11 @@ void VpiImpl::get_sim_time(uint32_t *high, uint32_t *low)
     *low = vpi_time_s.low;
 }
 
+void VpiImpl::sim_printf(const char *msg)
+{
+    vpi_printf(msg);
+}
+
 GpiObjHdl* VpiImpl::create_gpi_obj_from_handle(vpiHandle new_hdl, std::string &name)
 {
     int32_t type;

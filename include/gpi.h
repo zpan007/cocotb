@@ -112,6 +112,10 @@ void gpi_sim_end(void);
 // Returns simulation time as a float. Units are default sim units
 void gpi_get_sim_time(uint32_t *high, uint32_t *low);
 
+// Note we're lazy here because calls to printf will always come from Python
+// Should really have a variadic function...
+void gpi_printf(const char *msg);
+
 
 // Functions for extracting a gpi_sim_hdl to an object
 // Returns a handle to the root simulation object,

@@ -157,6 +157,11 @@ void gpi_get_sim_time(uint32_t *high, uint32_t *low)
     registered_impls[0]->get_sim_time(high, low);
 }
 
+void gpi_printf(const char *msg)
+{
+    registered_impls[0]->sim_printf(msg);
+}
+
 gpi_sim_hdl gpi_get_root_handle(const char *name)
 {
     /* May need to look over all the implementations that are registered
