@@ -234,7 +234,7 @@ def hexdump(x):
             else:
                 rs += "   "
             if j % 16 == 7:
-                rs += ""
+                rs += " "
         rs += "  "
         rs += _sane_color(x[i:i + 16]) + "\n"
         i += 16
@@ -276,8 +276,11 @@ def hexdiffs(x, y):
         """Highlight only with ANSI output if it's requested and we are not in a GUI."""
         
         want_ansi = os.getenv("COCOTB_ANSI_OUTPUT") and not os.getenv("GUI")
-        if want_ansi is None:
-            want_ansi = sys.stdout.isatty()  # default to ANSI for TTYs
+        gui_mode = os.getenv("GUI") and int(os.getenv("GUI"))
+#        if want_ansi is None:
+#            want_ansi = sys.stdout.isatty()  # default to ANSI for TTYs
+        if gui_mode:
+            return string
         else:
             want_ansi = want_ansi == '1'
 

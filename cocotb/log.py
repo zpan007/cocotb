@@ -45,26 +45,37 @@ else:
     _suppress = False
 
 # Column alignment
+_SIMTIME_LEN    = 12
 _LEVEL_CHARS    = len("CRITICAL")  # noqa
 _RECORD_CHARS   = 35  # noqa
 _FILENAME_CHARS = 20  # noqa
-_LINENO_CHARS   = 4  # noqa
-_FUNCNAME_CHARS = 31  # noqa
+_LINENO_CHARS   = 4   # noqa
+_FUNCNAME_CHARS = 21  # noqa
 
 class SimBaseLog(logging.getLoggerClass()):
     def __init__(self, name):
         hdlr = logging.StreamHandler(sys.stdout)
         want_ansi = os.getenv("COCOTB_ANSI_OUTPUT") and not os.getenv("GUI")
+#         if want_ansi is None:
+#             want_ansi = sys.stdout.isatty()  # default to ANSI for TTYs
+#         else:
+#             want_ansi = want_ansi == '1'
+#         if want_ansi:
+#             hdlr.setFormatter(SimColourLogFormatter())
+#             self.colour = True
+#         else:
+#             hdlr.setFormatter(SimLogFormatter())
+#             self.colour = False
+        gui_mode = os.getenv("GUI") and int(os.getenv("GUI"))
         if want_ansi is None:
-            want_ansi = sys.stdout.isatty()  # default to ANSI for TTYs
+            self.colour = False if gui_mode else True
         else:
-            want_ansi = want_ansi == '1'
-        if want_ansi:
+            self.colour = True if int(os.getenv("COCOTB_ANSI_OUTPUT")) else False
+            
+        if self.colour:
             hdlr.setFormatter(SimColourLogFormatter())
-            self.colour = True
         else:
             hdlr.setFormatter(SimLogFormatter())
-            self.colour = False
         self._cache = {}
         self.name = name
         self.handlers = []
@@ -73,7 +84,29 @@ class SimBaseLog(logging.getLoggerClass()):
         self.propagate = False
         logging.__init__(name)
         self.addHandler(hdlr)
-        self.setLevel(logging.NOTSET)
+
+        if os.getenv('DEBUG') and int(os.getenv('DEBUG')):
+            loglevel = logging.DEBUG
+        else:
+            loglevel=logging.INFO
+
+        # Override loglevel via environment variable LOGLEVEL
+        if(os.getenv('LOGLEVEL')):
+            level_str = os.getenv('LOGLEVEL').upper()
+            if level_str == 'CRITICAL':
+                loglevel = logging.CRITICAL
+            elif level_str == 'ERROR':
+                loglevel = logging.ERROR
+            elif level_str == 'WARNING' or loglevel_str == 'WARN':
+                loglevel = logging.WARNING
+            elif level_str == 'INFO':
+                loglevel = logging.INFO
+            elif level_str == 'DEBUG':
+                loglevel = logging.DEBUG
+            else:
+                raise ValueError("Unsupported LOGLEVEL: %s\n" % loglevel_str)
+
+        self.setLevel(loglevel)
 
 """ Need to play with this to get the path of the called back,
     construct our own makeRecord for this """
@@ -168,8 +201,8 @@ class SimLogFormatter(logging.Formatter):
 
     def _format(self, level, record, msg, coloured=False):
         time_ns = get_sim_time('ns')
-        simtime = "%6.2fns" % (time_ns)
-        prefix = simtime.rjust(11) + ' ' + level + ' '
+        simtime = "%8.2fns" % (time_ns)
+        prefix = simtime.rjust(_SIMTIME_LEN) + ' ' + level + ' '
         if not _suppress:
             prefix += self.ljust(record.name, _RECORD_CHARS) + \
                       self.rjust(os.path.split(record.filename)[1], _FILENAME_CHARS) + \

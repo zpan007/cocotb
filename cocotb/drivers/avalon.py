@@ -95,11 +95,22 @@ class AvalonMM(BusDriver):
 
 class AvalonMaster(AvalonMM):
     """Avalon Memory Mapped Interface (Avalon-MM) Master"""
+    _default_config = {
+        "gapOnBetweenWrites" : True,
+    }
     def __init__(self, entity, name, clock, **kwargs):
         AvalonMM.__init__(self, entity, name, clock, **kwargs)
         self.log.debug("AvalonMaster created")
         self.busy_event = Event("%s_busy" % name)
         self.busy = False
+
+        config = kwargs.pop('config', {})
+        self.config = AvalonMaster._default_config.copy()
+
+        for configoption, value in config.items():
+            self.config[configoption] = value
+            self.log.debug("Setting config option %s to %s" %
+                           (configoption, str(value)))
 
     def __len__(self):
         return 2**len(self.bus.address)
@@ -182,7 +193,7 @@ class AvalonMaster(AvalonMM):
         raise ReturnValue(data)
 
     @coroutine
-    def write(self, address, value):
+    def write(self, address, value, byteenable=-1):
         """Issue a write to the given address with the specified
         value.
 
@@ -199,13 +210,18 @@ class AvalonMaster(AvalonMM):
 
         yield self._acquire_lock()
 
-        # Apply values to bus
-        yield RisingEdge(self.clock)
+        if self.config["gapOnBetweenWrites"]:
+            yield RisingEdge(self.clock)
+            
+        # Apply value to bus
         self.bus.address <= address
         self.bus.writedata <= value
         self.bus.write <= 1
         if hasattr(self.bus, "byteenable"):
-            self.bus.byteenable <= int("1"*len(self.bus.byteenable), 2)
+            if byteenable == -1:
+                self.bus.byteenable <= int("1"*len(self.bus.byteenable), 2)
+            else:
+                self.bus.byteenable <= byteenable
         if hasattr(self.bus, "cs"):
             self.bus.cs <= 1
 
@@ -705,10 +721,11 @@ class AvalonSTPkts(ValidatedBusDriver):
         self.bus.endofpacket <= 0
         self.bus.valid <= 0
         if hasattr(self.bus, 'error'):
-            self.bus.error <= 0
+            self.bus.error <= self.config.get('error', 0)
 
         if hasattr(self.bus, 'channel'):
-            self.bus.channel <= 0
+            # If channel isn't defined in the config, set it to 0
+            self.bus.channel <= self.config.get('channel', 0)
         elif channel is not None:
             raise TestError("%s does not have a channel signal" % self.name)
 

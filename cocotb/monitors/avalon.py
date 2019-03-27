@@ -96,7 +96,6 @@ class AvalonSTPkts(BusMonitor):
 
     _default_config = {
         "dataBitsPerSymbol"             : 8,
-        "firstSymbolInHighOrderBits"    : True,
         "maxChannel"                    : 0,
         "readyLatency"                  : 0,
         "invalidTimeout"                : 0,
@@ -107,6 +106,7 @@ class AvalonSTPkts(BusMonitor):
         BusMonitor.__init__(self, *args, **kwargs)
 
         self.config = self._default_config.copy()
+        self.config.update(BusMonitor._default_config)
 
         # Set default config maxChannel to max value on channel bus
         if hasattr(self.bus, 'channel'):
@@ -169,14 +169,14 @@ class AvalonSTPkts(BusMonitor):
                 invalid_cyclecount = 0
 
                 if self.bus.startofpacket.value:
-                    if pkt:
+                    if pkt and self.config['fail_immediately']:
                         raise AvalonProtocolError(
                             "Duplicate start-of-packet received on %s" % (
                                 str(self.bus.startofpacket)))
                     pkt = ""
                     in_pkt = True
 
-                if not in_pkt:
+                if not in_pkt and self.config['fail_immediately']:
                     raise AvalonProtocolError("Data transfer outside of "
                                               "packet")
 

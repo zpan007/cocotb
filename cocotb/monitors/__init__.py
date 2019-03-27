@@ -174,11 +174,18 @@ class BusMonitor(Monitor):
     _optional_signals = []
 
     def __init__(self, entity, name, clock, reset=None, reset_n=None,
-                 callback=None, event=None, bus_separator="_", array_idx=None):
+                 callback=None, event=None, bus_separator="_",  config={}, array_idx=None):
         self.log = SimLog("cocotb.%s.%s" % (entity._name, name))
         self.entity = entity
         self.name = name
         self.clock = clock
+        self.config = self._default_config.copy()
+
+        for configoption, value in config.items():
+            self.config[configoption] = value
+            self.log.debug("Setting config option %s to %s" %
+                           (configoption, str(value)))
+
         self.bus = Bus(self.entity, self.name, self._signals,
                        optional_signals=self._optional_signals,
                        bus_separator=bus_separator,array_idx=array_idx)
