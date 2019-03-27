@@ -34,7 +34,8 @@ def recursive_discovery(dut):
     """
     Recursively discover every single object in the design
     """
-    if cocotb.SIM_NAME.lower().startswith(("ncsim","modelsim")):
+    if (cocotb.SIM_NAME.lower().startswith(("ncsim","modelsim")) or
+        (cocotb.SIM_NAME.lower().startswith("riviera") and not cocotb.SIM_VERSION.startswith("2016.02"))):
         # Finds regions, signal, generics, constants, varibles and ports.
         pass_total = 34569
     else:
@@ -83,7 +84,7 @@ def dual_iteration(dut):
 
 @cocotb.test()
 def get_clock(dut):
-    dut.log.info("dut.aclk is %s" % dut.aclk.__class__.__name__)
+    dut._log.info("dut.aclk is %s" % dut.aclk.__class__.__name__)
     dut.aclk <= 0
     yield Timer(1)
     dut.aclk <= 1

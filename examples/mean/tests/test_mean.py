@@ -13,14 +13,13 @@ clock_period = 100
 
 
 class StreamBusMonitor(BusMonitor):
-    """
-    streaming bus monitor
-    """
+    """Streaming bus monitor."""
+    
     _signals = ["valid", "data"]
 
     @cocotb.coroutine
     def _monitor_recv(self):
-        """Watch the pins and reconstruct transactions"""
+        """Watch the pins and reconstruct transactions."""
 
         while True:
             yield RisingEdge(self.clock)
@@ -40,11 +39,11 @@ def clock_gen(signal, period=10000):
 
 @cocotb.coroutine
 def value_test(dut, num):
-    """ Test n*num/n = num """
+    """Test n*num/n = num"""
 
     data_width = int(dut.DATA_WIDTH.value)
     bus_width = int(dut.BUS_WIDTH.value)
-    dut.log.info('Detected DATA_WIDTH = %d, BUS_WIDTH = %d' %
+    dut._log.info('Detected DATA_WIDTH = %d, BUS_WIDTH = %d' %
                  (data_width, bus_width))
 
     cocotb.fork(clock_gen(dut.clk, period=clock_period))
@@ -72,20 +71,20 @@ def value_test(dut, num):
 
 @cocotb.test()
 def mean_basic_test(dut):
-    """ Test n*5/n = 5 """
+    """Test n*5/n = 5"""
     yield value_test(dut, 5)
 
 
 @cocotb.test()
 def mean_overflow_test(dut):
-    """ Test for overflow n*max_val/n = max_val """
+    """Test for overflow n*max_val/n = max_val"""
     data_width = int(dut.DATA_WIDTH.value)
     yield value_test(dut, 2**data_width - 1)
 
 
 @cocotb.test()
 def mean_randomised_test(dut):
-    """ Test mean of random numbers multiple times """
+    """Test mean of random numbers multiple times"""
 
     # dut_in = StreamBusMonitor(dut, "i", dut.clk)  # this doesn't work:
     # VPI Error vpi_get_value():
@@ -99,7 +98,7 @@ def mean_randomised_test(dut):
 
     data_width = int(dut.DATA_WIDTH.value)
     bus_width = int(dut.BUS_WIDTH.value)
-    dut.log.info('Detected DATA_WIDTH = %d, BUS_WIDTH = %d' %
+    dut._log.info('Detected DATA_WIDTH = %d, BUS_WIDTH = %d' %
                  (data_width, bus_width))
 
     cocotb.fork(clock_gen(dut.clk, period=clock_period))
